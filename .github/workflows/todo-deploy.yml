@@ -1,0 +1,41 @@
+name: Deploy Todo App (Web & WAS)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # 웹 서버 배포: 파일 배달(SCP)
+  deploy-web:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Delivery HTML to Web Server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.WEB_SERVER_HOST }}
+        username: ${{ secrets.WEB_SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "index.html"
+        target: "/home/ubuntu/www"
+
+  # WAS 서버 배포: 원격 명령어(SSH)
+  deploy-was:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Execute Git Pull & Restart Flask on WAS Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.WAS_SERVER_HOST }}
+        username: ${{ secrets.WAS_SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /home/ubuntu/todo-app
+          git fetch --all && git reset --hard @{u}
+          ./venv/bin/pip install -r requirements.txt
+          pkill -f "[a]pp.py" || true
+          setsid nohup ./venv/bin/python app.py > flask.log 2>&1 < /dev/null &
+          sleep 2
+          curl -s localhost:5000/api/todos
