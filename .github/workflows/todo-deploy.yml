@@ -31,11 +31,12 @@ jobs:
         host: ${{ secrets.WAS_SERVER_HOST }}
         username: ${{ secrets.WAS_SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
+                script: |
           cd /home/ubuntu/todo-app
           git fetch --all && git reset --hard @{u}
           ./venv/bin/pip install -r requirements.txt
-          pkill -f "[a]pp.py" || true
+          fuser -k 5000/tcp || true
+          sleep 1
           setsid nohup ./venv/bin/python app.py > flask.log 2>&1 < /dev/null &
           sleep 2
           curl -s localhost:5000/api/todos
